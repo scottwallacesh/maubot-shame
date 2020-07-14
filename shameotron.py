@@ -99,28 +99,32 @@ class ShameOTron(Plugin):
 
 
     @command.new('shame', help='Show versions of all homeservers in the room')
-    async def shame_handler(self, evt: MessageEvent) -> None:
+    @command.argument("candidate", pass_raw=True, required=False)
+    async def shame_handler(self, evt: MessageEvent, candidate: str = None) -> None:
         """
         Class method to handle the `!shame` command
         """
         event_id = await evt.reply('Loading member list...')
-        member_servers = await self._load_members(evt.room_id)
+        if candidate:
+            member_servers = [candidate]
+        else:
+            member_servers = await self._load_members(evt.room_id)
 
-        # Filter out the "dead servers"
-        dead_servers = self.config['dead_servers']
-        if dead_servers:
-            # Return a unique list
-            member_servers = sorted(
-                list(
-                    set(member_servers.keys() - set(dead_servers))
+            # Filter out the "dead servers"
+            dead_servers = self.config['dead_servers']
+            if dead_servers:
+                # Return a unique list
+                member_servers = sorted(
+                    list(
+                        set(member_servers.keys() - set(dead_servers))
+                    )
                 )
-            )
 
-        await self._edit(
-            evt.room_id,
-            event_id,
-            'Member list loaded, fetching versions... please wait...'
-        )
+            await self._edit(
+                evt.room_id,
+                event_id,
+                'Member list loaded, fetching versions... please wait...'
+            )
 
         versions = []
         for host in member_servers:
