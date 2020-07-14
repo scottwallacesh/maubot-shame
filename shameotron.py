@@ -10,7 +10,7 @@ import requests
 
 from mautrix.util.config import BaseProxyConfig, ConfigUpdateHelper
 from mautrix.types import TextMessageEventContent, MessageType, Format, \
-                          RelatesTo, RelationType, EventID, RoomID, UserID
+                          EventID, RoomID, UserID
 from mautrix.util import markdown
 
 from maubot import Plugin, MessageEvent
