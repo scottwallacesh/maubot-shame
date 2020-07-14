@@ -52,8 +52,12 @@ class ShameOTron(Plugin):
         """
         Class method to update an existing message event
         """
-        content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=text, format=Format.HTML,
-                                          formatted_body=markdown.render(text))
+        content = TextMessageEventContent(
+            msgtype=MessageType.NOTICE,
+            body=text,
+            format=Format.HTML,
+            formatted_body=markdown.render(text)
+        )
         content.set_edit(event_id)
         await self.client.send_message(room_id, content)
 
