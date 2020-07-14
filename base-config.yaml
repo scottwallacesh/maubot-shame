@@ -1,0 +1,9 @@
+# The https://github.com/matrix-org/matrix-federation-tester instance to use.
+# {server} is replaced with the server name.
+federation_tester: https://matrix.org/federationtester/api/report?server_name={server}
+#
+# Instances to ignore as they might be permanently erroring and causing slow responses
+# dead_servers:
+#   - host1.example.com
+#   - host2.example.com
+#   - host.example.org

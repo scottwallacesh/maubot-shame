@@ -1,0 +1,8 @@
+maubot: 0.1.0
+id: sh.wallace.matrix.shameotron
+version: 0.0.2
+license: MIT
+modules:
+- shameotron
+main_class: ShameOTron
+database: false
