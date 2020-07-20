@@ -3,6 +3,9 @@
 upgrading their Matrix homeservers to the latest version.
 """
 import json
+from datetime import datetime
+import socket
+import ssl
 
 from typing import Dict, List, Type
 
@@ -74,32 +77,67 @@ class ShameOTron(Plugin):
         return servers
 
 
-    async def query_homeserver_version(self, host):
+    async def get_ssl_expiry(self, addr):
         """
-        Function to query the Federation Tester to retrieve the running version
-        for a server
+        Class method to return the expiry date of a specific instance
+        """
+        ssl_date_fmt = r'%b %d %H:%M:%S %Y %Z'
+        (hostname, port) = addr.split(':')
+
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_OPTIONAL
+        conn = context.wrap_socket(
+            socket.socket(socket.AF_INET),
+            server_hostname=hostname,
+        )
+        conn.settimeout(10.0)
+
+        conn.connect((hostname, int(port)))
+        ssl_info = conn.getpeercert()
+
+        # parse the string from the certificate into a Python datetime object
+        return datetime.strptime(ssl_info['notAfter'], ssl_date_fmt)
+
+    async def query_homeserver(self, host):
+        """
+        Class method to query the Federation Tester to retrieve the running
+        version for a server
 
         host: (str) Server to get version for
 
         Returns: (str) Version string of the server
         """
+        version = None
         try:
             req = requests.get(
                 self.config["federation_tester"].format(server=host),
                 timeout=10000
             )
         except requests.exceptions.Timeout:
-            return '[TIMEOUT]'
+            version = '[TIMEOUT]'
 
         data = json.loads(req.text)
 
         if not data['FederationOK']:
-            return '[OFFLINE]'
+            version = '[OFFLINE]'
 
         try:
-            return data['Version']['version']
-        except KeyError:
-            return '[ERROR]'
+            addr = list(data['ConnectionReports'].keys())[0]
+            ssl_expiry = await self.get_ssl_expiry(addr)
+        except ssl.SSLCertVerificationError:
+            ssl_expiry = None
+        try:
+            if not version:
+                version = data['Version']['version']
+        except (TypeError, KeyError) as errstr:
+            self.log.error(errstr)
+            version = '[ERROR]'
+
+        return {
+            'version': version,
+            'ssl_expiry': ssl_expiry
+        }
 
 
     @command.new('shame', help='Show versions of all homeservers in the room')
@@ -124,16 +162,23 @@ class ShameOTron(Plugin):
                     )
                 )
 
-            await self._edit(
-                evt.room_id,
-                event_id,
-                'Member list loaded, fetching versions... please wait...'
-            )
+        await self._edit(
+            evt.room_id,
+            event_id,
+            'Member list loaded, fetching versions... please wait...'
+        )
 
         versions = []
         for host in member_servers:
+            data = await self.query_homeserver(host)
+
+            warning = ''
+            now = int(datetime.now().timestamp())
+            expiry = int(data['ssl_expiry'].timestamp()) if data['ssl_expiry'] else now
+            warning = '(cert expiry warning!)' if  now > (expiry - (30 * 86400)) else ''
+
             versions.append(
-                (host, await self.query_homeserver_version(host))
+                (host, f"{data['version']} {warning}")
             )
 
         await self._edit(
