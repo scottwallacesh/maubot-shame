@@ -125,8 +125,12 @@ class ShameOTron(Plugin):
         try:
             addr = list(data['ConnectionReports'].keys())[0]
             ssl_expiry = await self.get_ssl_expiry(addr)
-        except ssl.SSLCertVerificationError:
+        except (
+                ssl.SSLCertVerificationError,
+                IndexError
+        ):
             ssl_expiry = None
+
         try:
             if not version:
                 version = data['Version']['version']
@@ -174,8 +178,11 @@ class ShameOTron(Plugin):
 
             warning = ''
             now = int(datetime.now().timestamp())
-            expiry = int(data['ssl_expiry'].timestamp()) if data['ssl_expiry'] else now
-            warning = '(cert expiry warning!)' if  now > (expiry - (30 * 86400)) else ''
+            if data['ssl_expiry']:
+                expiry = int(data['ssl_expiry'].timestamp())
+                self.log.debug("%s: %s, %s", host, now, expiry)
+                if now > (expiry - (30 * 86400)):
+                    warning = '(cert expiry warning!)'
 
             versions.append(
                 (host, f"{data['version']} {warning}")

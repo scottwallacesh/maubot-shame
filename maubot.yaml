@@ -1,6 +1,6 @@
 maubot: 0.1.0
 id: sh.wallace.matrix.shameotron
-version: 0.0.6
+version: 0.0.7
 license: MIT
 modules:
 - shameotron
