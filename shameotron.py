@@ -77,7 +77,7 @@ class ShameOTron(Plugin):
         return servers
 
 
-    async def get_ssl_expiry(self, addr):
+    async def get_ssl_expiry(self, addr, host):
         """
         Class method to return the expiry date of a specific instance
         """
@@ -85,11 +85,11 @@ class ShameOTron(Plugin):
         (hostname, port) = addr.split(':')
 
         context = ssl.create_default_context()
-        context.check_hostname = False
+        context.check_hostname = True
         context.verify_mode = ssl.CERT_OPTIONAL
         conn = context.wrap_socket(
             socket.socket(socket.AF_INET),
-            server_hostname=hostname,
+            server_hostname=host,
         )
         conn.settimeout(10.0)
 
@@ -124,18 +124,20 @@ class ShameOTron(Plugin):
 
         try:
             addr = list(data['ConnectionReports'].keys())[0]
-            ssl_expiry = await self.get_ssl_expiry(addr)
+            ssl_expiry = await self.get_ssl_expiry(addr, host)
         except (
                 ssl.SSLCertVerificationError,
+                ssl.SSLError,
                 IndexError
-        ):
+        ) as error:
+            self.log.warning('SSL error for: %s (%s): %s', host, addr, error)
             ssl_expiry = None
 
         try:
             if not version:
                 version = data['Version']['version']
-        except (TypeError, KeyError) as errstr:
-            self.log.error(errstr)
+        except (TypeError, KeyError) as error:
+            self.log.error(error)
             version = '[ERROR]'
 
         return {
@@ -177,12 +179,13 @@ class ShameOTron(Plugin):
             data = await self.query_homeserver(host)
 
             warning = ''
-            now = int(datetime.now().timestamp())
+            now = datetime.now()
             if data['ssl_expiry']:
-                expiry = int(data['ssl_expiry'].timestamp())
-                self.log.debug("%s: %s, %s", host, now, expiry)
-                if now > (expiry - (30 * 86400)):
-                    warning = '(cert expiry warning!)'
+                expiry_days = (data['ssl_expiry'] - now).days
+                if expiry_days < 30:
+                    warning = f'(cert expiry in {expiry_days} days!)'
+            else:
+                warning = '(SSL error)'
 
             versions.append(
                 (host, f"{data['version']} {warning}")
