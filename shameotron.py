@@ -99,6 +99,7 @@ class ShameOTron(Plugin):
         # parse the string from the certificate into a Python datetime object
         return datetime.strptime(ssl_info['notAfter'], ssl_date_fmt)
 
+
     async def query_homeserver(self, host):
         """
         Class method to query the Federation Tester to retrieve the running
@@ -130,7 +131,7 @@ class ShameOTron(Plugin):
                 ssl.SSLError,
                 IndexError
         ) as error:
-            self.log.warning('SSL error for: %s (%s): %s', host, addr, error)
+            self.log.warning('SSL error for: %s: %s', host, error)
             ssl_expiry = None
 
         try:
