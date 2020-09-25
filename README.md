@@ -1,4 +1,4 @@
-# echo
+# Shameotron
 A simple [maubot](https://github.com/maubot/maubot) that displays everyone's homeserver software version.
 
 ## Usage
